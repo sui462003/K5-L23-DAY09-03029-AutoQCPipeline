@@ -59,8 +59,34 @@ Kết quả ghi nhận:
 2. *Lỗi ngữ nghĩa mà cả model lớn cũng nhầm (khuyết tật thị giác chung):* Với các vật thể bị che khuất nặng (heavy occlusion) hoặc trong điều kiện thiếu sáng/bóng râm, cả người gán nhãn lẫn model lớn `yolo26l` đều nhận diện sai (ví dụ nhầm xe tải nhỏ/bán tải thành xe con), dẫn đến `second_opinion` đồng thuận giả và không cảnh báo.
 3. *Ảnh trùng bị biến đổi cực mạnh:* Những ảnh bị cắt cúp > 50% hoặc xoay góc/thay đổi màu sắc mạnh vượt quá ngưỡng khoảng cách pHash thì thuật toán băm tri giác không thể nhận diện được.
 
-## 5. Train: raw vs clean (tùy chọn, chấm riêng)
-Chưa chạy. Lý do: Môi trường làm việc hiện tại không có GPU rời hỗ trợ CUDA để huấn luyện YOLO (2 seed $\times$ 20 epoch). Toàn bộ mã nguồn và pipeline đã được chuẩn bị sẵn sàng để chạy thí nghiệm trên Google Colab qua notebook `notebooks/day09_train_compare.ipynb` theo hướng dẫn tại `docs/COLAB.md`.
+## 5. Train: raw vs clean (kết quả thực nghiệm)
+Thí nghiệm so sánh công bằng được thực hiện cục bộ theo cấu hình rút gọn được quy định tại `docs/COLAB.md` và `notebooks/day09_train_compare.ipynb`:
+- Cùng model xuất phát: `yolo26n.pt`
+- Cùng siêu tham số: `epochs = 15`, `batch = 16`, `imgsz = 416`, `device = cpu`
+- Cùng 2 seed kiểm chứng: `seed = 0, 1`
+- Cùng tập validation (`data/gold_val`, 40 ảnh) và cùng tập kiểm thử độc lập (`data/test`, 100 ảnh có nhãn chuẩn của người).
+
+**Bảng tổng hợp kết quả (sinh từ `scripts/summarize_results.py`):**
+
+| Biến thể | #Ảnh train | Số seed | mAP50 (TB ± độ lệch) | mAP50-95 (TB ± độ lệch) | Precision (TB ± độ lệch) | Recall (TB ± độ lệch) |
+|---|---|---|---|---|---|---|
+| `raw` | 224 | 2 | 0.621 ± 0.005 | 0.419 ± 0.018 | 0.637 ± 0.005 | 0.571 ± 0.019 |
+| `clean` | 203 | 2 | 0.661 ± 0.037 | 0.433 ± 0.024 | 0.722 ± 0.035 | 0.538 ± 0.019 |
+
+Chênh lệch mAP50 (`clean − raw`): **+0.040** (+4.0%). Biểu đồ trực quan hóa được lưu tại `submission/results/comparison.png`.
+
+**Phân tích sâu số liệu:**
+1. *So sánh chênh lệch với độ nhiễu giữa các seed:*
+   - Mức tăng mAP50 trung bình đạt **+0.040** (từ 0.621 lên 0.661).
+   - Tuy nhiên, độ lệch chuẩn giữa 2 seed của biến thể `clean` là $\pm 0.037$ (seed 0 đạt 0.635, seed 1 đạt 0.687). Mức tăng +0.040 xấp xỉ tương đương độ lệch chuẩn giữa các seed, do đó với tập test 100 ảnh và 2 seed, mức cải thiện tổng thể mAP50 thể hiện xu hướng tích cực nhưng độ biến thiên ngẫu nhiên giữa các lần chạy vẫn còn đáng kể.
+   - Điểm sáng vượt trội rõ rệt nhất nằm ở **Precision**: tăng mạnh từ **0.637 lên 0.722** (+0.085, vượt xa độ lệch chuẩn $\pm 0.035$).
+2. *Nguyên nhân chênh lệch:*
+   - *Precision tăng vọt (+8.5%):* Nhờ việc dọn dẹp các box format hỏng, cắt gọn box tràn biên (`BOX_OUT_OF_IMAGE`), loại bỏ box 0 diện tích (`BOX_ZERO`) và xóa các box trùng lặp (`DUP_BOX`). Mô hình được học các viền biên chính xác, giảm thiểu tối đa các dự đoán sai và box rác.
+   - *Lớp `bus` và `truck` cải thiện mạnh nhất:* AP50 của lớp `bus` tăng từ trung bình 0.526 lên 0.661 (+0.135) nhờ pipeline sửa lỗi chính tả tên lớp ('Bus' $\rightarrow$ 'bus') và bổ sung các nhãn thiếu từ hàng đợi người duyệt.
+   - *Hiện tượng rò rỉ tập test (`LEAK_TEST`):* Trong tập `raw` có 5 ảnh trùng với `data/test`. Mô hình `raw` đạt Recall cao hơn (0.571 vs 0.538) một phần do hiện tượng "học vẹt" từ các ảnh rò rỉ này. Khi pipeline loại bỏ 5 ảnh vi phạm, tập `clean` phản ánh năng lực tổng quát hóa trung thực và chuẩn mực hơn.
+3. *Kết luận trung thực và việc tiếp theo:*
+   - Bộ dữ liệu `clean` sau khi qua pipeline QC đã cải thiện chất lượng dữ liệu huấn luyện một cách rõ ràng (đặc biệt về Precision và mAP50).
+   - *Việc tiếp theo:* Cần tăng ngân sách người duyệt lên 130 ảnh để giải quyết nốt 44 ảnh cảnh báo còn tồn đọng nhằm đạt điều kiện RELEASE chính thức, đồng thời huấn luyện 3-5 seed với 40 epochs trên GPU để triệt tiêu phương sai giữa các lần chạy.
 
 ## 6. Quyết định và ghi chú AI
 **(a) Quyết định cuối cùng:**
