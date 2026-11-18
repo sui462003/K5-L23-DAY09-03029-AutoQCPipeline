@@ -1,0 +1,18 @@
+{
+  "verdict": {
+    "decision": "Hold",
+    "n_errors": 0,
+    "n_warn_images": 44,
+    "n_images": 203,
+    "warn_ratio": 0.2167,
+    "reasons": [
+      "Tỉ lệ ảnh có cảnh báo 21.67% (44/203 ảnh) >= ngưỡng 10.00%"
+    ]
+  },
+  "reviewed": 80,
+  "budget": 80,
+  "seconds": 67.5,
+  "exported": "/mnt/d/K5-L23-DAY09-PhamLamAnh-03029-AutoQCPipeline/submission/export/clean_v1",
+  "config_sha1": "d1dc1fd579d4d828d3afe5ea6c5f7841ffa696a8",
+  "review_sim_sha1": "7988ca22827f780a7043a2300490e679a1697154"
+}
