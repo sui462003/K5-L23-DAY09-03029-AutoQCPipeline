@@ -1,4 +1,4 @@
-# Báo cáo Day 09 — Pham Lam Anh, 03029
+# Báo cáo Day 09 — Phạm Lâm Anh, 03029
 
 ## 1. Kết luận trước
 Pipeline đưa ra kết luận **HOLD** (mã thoát `10`). Trong lô dữ liệu ban đầu, có **224 ảnh** đưa vào cửa nhận (intake); pipeline loại bỏ **21 ảnh** (hỏng, quá nhỏ, trùng lặp, rò rỉ tập test) và tiếp nhận **203 ảnh** vào quy trình QC. Sau khi máy tự động sửa các lỗi cú pháp an toàn và người duyệt mô phỏng 80 ảnh ưu tiên cao nhất, bộ dữ liệu **không còn bất kỳ lỗi bắt buộc nào** (0 lỗi ERROR). Tuy nhiên, do ngân sách người duyệt có hạn (80/130 ảnh), vẫn còn **44/203 ảnh** chứa cảnh báo chưa được xử lý, tương đương tỉ lệ cảnh báo chưa duyệt là **21.67%** ($\ge$ ngưỡng cho phép 10.00%). Do đó, pipeline xuất bản nháp (draft) vào `submission/export/clean_v1` để thử nghiệm nhưng chưa phát hành chính thức.
